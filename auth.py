@@ -1,7 +1,10 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from datetime import timedelta
+import logging
 
 from core.config import settings
 from core.database import get_db, engine, Base
@@ -14,6 +17,10 @@ from services.auth_service import (
     get_estudiante_by_dni
 )
 
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Crear las tablas en la base de datos
 Base.metadata.create_all(bind=engine)
 
@@ -23,6 +30,18 @@ app = FastAPI(
     description="API de autenticación para el sistema PAPPI Calculator",
     version="1.0.0"
 )
+
+# Manejador de errores de validación
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.error(f"Error de validación: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": exc.errors(),
+            "body": str(exc.body) if hasattr(exc, 'body') else None
+        }
+    )
 
 # Configurar CORS
 app.add_middleware(
@@ -61,7 +80,7 @@ def health_check():
     summary="Registrar un nuevo estudiante",
     description="Crea una cuenta nueva para un estudiante con sus datos personales"
 )
-def registrar_estudiante(
+async def registrar_estudiante(
     estudiante: EstudianteCreate,
     db: Session = Depends(get_db)
 ):
@@ -78,6 +97,9 @@ def registrar_estudiante(
     Raises:
         HTTPException: Si el correo o DNI ya están registrados
     """
+    logger.info(f"Intentando registrar estudiante: {estudiante.correo_institucional}")
+    logger.info(f"Datos recibidos: nombres={estudiante.nombres}, apellidos={estudiante.apellidos}, dni={estudiante.dni}")
+    
     # Verificar si el correo ya existe
     existing_correo = get_estudiante_by_correo(db, estudiante.correo_institucional)
     if existing_correo:
@@ -97,8 +119,10 @@ def registrar_estudiante(
     # Crear el estudiante
     try:
         db_estudiante = create_estudiante(db, estudiante)
+        logger.info(f"Estudiante registrado exitosamente: {estudiante.correo_institucional}")
         return db_estudiante
     except Exception as e:
+        logger.error(f"Error al registrar estudiante: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al registrar el estudiante: {str(e)}"

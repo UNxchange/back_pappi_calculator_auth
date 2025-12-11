@@ -14,7 +14,7 @@ class EstudianteBase(BaseModel):
 
 class EstudianteCreate(EstudianteBase):
     """Schema para crear un estudiante"""
-    contrasena: str = Field(..., min_length=8, max_length=100, description="Contraseña del estudiante")
+    contrasena: str = Field(..., min_length=6, max_length=72, description="Contraseña del estudiante")
     
     @field_validator('dni')
     @classmethod
@@ -22,22 +22,16 @@ class EstudianteCreate(EstudianteBase):
         """Validar que el DNI contenga solo números"""
         if not v.isdigit():
             raise ValueError('El DNI debe contener solo números')
-        if len(v) != 8:
-            raise ValueError('El DNI debe tener exactamente 8 dígitos')
+        if len(v) < 7 or len(v) > 20:
+            raise ValueError('El DNI debe tener entre 7 y 20 dígitos')
         return v
     
     @field_validator('contrasena')
     @classmethod
     def validar_contrasena(cls, v):
         """Validar requisitos mínimos de la contraseña"""
-        if len(v) < 8:
-            raise ValueError('La contraseña debe tener al menos 8 caracteres')
-        if not re.search(r'[A-Z]', v):
-            raise ValueError('La contraseña debe contener al menos una letra mayúscula')
-        if not re.search(r'[a-z]', v):
-            raise ValueError('La contraseña debe contener al menos una letra minúscula')
-        if not re.search(r'\d', v):
-            raise ValueError('La contraseña debe contener al menos un número')
+        if len(v) < 6:
+            raise ValueError('La contraseña debe tener al menos 6 caracteres')
         return v
 
 

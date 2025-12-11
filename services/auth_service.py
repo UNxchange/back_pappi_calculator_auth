@@ -21,7 +21,9 @@ def hash_password(password: str) -> str:
     Returns:
         Hash de la contraseña
     """
-    return pwd_context.hash(password)
+    # Bcrypt tiene un límite de 72 bytes, truncamos por seguridad
+    password_truncated = password[:72]
+    return pwd_context.hash(password_truncated)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
