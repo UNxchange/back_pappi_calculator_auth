@@ -17,6 +17,31 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - pappi_network
+
+  auth_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pappi_auth_service
+    environment:
+      DATABASE_URL: postgresql://pappi_user:pappi_password@postgres:5432/pappi_auth_db
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pappi_network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+
+networks:
+  pappi_network:
+    driver: bridge
